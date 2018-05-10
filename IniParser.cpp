@@ -243,7 +243,7 @@ bool IniParser::extractKeyPair(const std::string& s_line, KeyPair& keyPair)
 		ui_endValue = ui_startValue;
 
 		// find the end of the value component
-		while (ui_endValue < s_line.length() && isalnum(s_line.at(ui_endValue)))
+		while (ui_endValue < s_line.length() && s_line.at(ui_endValue) != ';')
 		{
 			ui_endValue++;
 		} // end while
