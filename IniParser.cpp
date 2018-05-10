@@ -73,28 +73,6 @@ inline size_t IniParser::groupSize(const std::string & s_group)
 } // end method groupSize
 
 
-inline bool IniParser::contains(const std::string & s_group)
-{
-	if (isValid())
-	{
-		return values->count(s_group) != 0;
-	} // end if
-
-	return false;
-} // end method contains
-
-
-inline bool IniParser::contains(const std::string & s_group, const std::string & s_key)
-{
-	if (isValid())
-	{
-		return (*values)[s_group]->count(s_key) != 0;
-	} // end if
-
-	return false;
-} // end method contains
-
-
 void IniParser::parseFile(const string& s_file)
 {
 	ifstream file(s_file.c_str());

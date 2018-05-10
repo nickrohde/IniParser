@@ -65,7 +65,7 @@ public:
 		std::string trash;
 		T t;
 
-		if (!isValid() || contains(s_group))
+		if (!isValid() || !contains(s_group))
 		{
 			std::stringstream error("The group '");
 
@@ -73,7 +73,7 @@ public:
 
 			throw std::invalid_argument(error.str());
 		} // end if
-		if (contains(s_group, s_key))
+		if (!contains(s_group, s_key))
 		{
 			std::stringstream error("The group '");
 
@@ -119,14 +119,29 @@ public:
 	/// <summary>Checks if the given group exists.</summary>
 	/// <param name="s_group">The group to check.</param>
 	/// <returns>True if the group exists, false otherwise.</returns>
-	inline bool contains(const std::string& s_group);
+	inline bool contains(const std::string& s_group)
+	{
+		if (isValid())
+		{
+			return values->count(s_group) != 0;
+		} // end if
+
+		return false;
+	} // end method contains
 
 	/// <summary>Checks if the given group contains the specified key.</summary>
 	/// <param name="s_group">The group containing the key.</param>
 	/// <param name="s_key">The key to check.</param>
 	/// <returns>True if the group contains the specified key, false otherwise.</returns>
-	inline bool contains(const std::string& s_group, const std::string& s_key);
+	inline bool contains(const std::string& s_group, const std::string& s_key)
+	{
+		if (isValid())
+		{
+			return (*values)[s_group]->count(s_key) != 0;
+		} // end if
 
+		return false;
+	} // end method contains
 private:
 	struct KeyPair
 	{
