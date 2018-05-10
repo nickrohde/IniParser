@@ -2,33 +2,11 @@
 
 using namespace std;
 
-IniParser::IniParser(const string& s_fileName)
-{
-	parse(s_fileName);
-} // end Constructor
-
-
-IniParser::~IniParser(void)
-{
-	clear();
-} // end Destructor
-
-
 void IniParser::parse(const std::string & s_fileName)
 {
 	instantiate();
 	parseFile(s_fileName);
 } // end method parse
-
-
-inline void IniParser::clear(void)
-{
-	if (isValid())
-	{
-		values->clear(); // destroy inner maps
-		delete values;
-	} // end if
-} // end method clear
 
 
 inline bool IniParser::empty(void)
@@ -40,12 +18,6 @@ inline bool IniParser::empty(void)
 
 	return true;
 } // end method empty
-
-
-inline bool IniParser::isValid(void)
-{
-	return values != nullptr;
-} // end method isValid
 
 
 inline size_t IniParser::size(void)

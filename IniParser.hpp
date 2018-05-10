@@ -19,11 +19,11 @@ public:
 
 	/// <summary>Constructor that will parse the file given in <paramref name="s_fileName"/>.</summary>
 	/// <param name="s_fileName">The path of the file to parse.</param>
-	IniParser(const std::string& s_fileName);
+	IniParser(const std::string& s_fileName) { parse(s_fileName); }
 
 	// Destructor:
 	/// <summary>Releases all dynamic memory owned by this object.</summary>
-	~IniParser(void);
+	~IniParser(void) { clear(); }
 
 	// Public Methods:	
 	// Mutators:
@@ -67,17 +67,17 @@ public:
 
 		if (!isValid() || !contains(s_group))
 		{
-			std::stringstream error("The group '");
+			std::stringstream error;
 
-			error << s_group << "' does not exists!";
+			error << "The group '" << s_group << "' does not exists!";
 
 			throw std::invalid_argument(error.str());
 		} // end if
 		if (!contains(s_group, s_key))
 		{
-			std::stringstream error("The group '");
+			std::stringstream error;
 
-			error << s_group << "' does not contain the key '" << s_key << "'!";
+			error << "The group '" << s_group << "' does not contain the key '" << s_key << "'!";
 
 			throw std::invalid_argument(error.str());
 		} // end elif
@@ -86,9 +86,10 @@ public:
 
 		if (!(stream >> t) || (stream >> trash)) // check if conversion is successful, and check if there is anything left in the stream afterwards
 		{										 // if there is anything left in the stream, conversion must've failed
-			std::stringstream error("IniParser could not convert the value of key '");
+			std::stringstream error;
 
-			error << s_key << "' in group '" << s_group << "' to the specified type.";
+			error << "IniParser could not convert the value of key '" << s_key << "' in group '" << s_group << "' to the specified type.\nValue is: " 
+				  << stream.str() << trash << std::endl;
 
 			throw std::invalid_argument(error.str());
 		} // end if
@@ -97,7 +98,14 @@ public:
 	} // end template getKeyAs
 
 	/// <summary>Deletes all groups and keys stored in the parser object.</summary>
-	inline void clear(void);
+	inline void clear(void)
+	{
+		if (isValid())
+		{
+			values->clear(); // destroy inner maps
+			delete values;
+		} // end if
+	} // end method clear
 
 	/// <summary>Checks if there are any groups in the parser.</summary>
 	/// <returns>True if the parser contains at least 1 group, false otherwise.</returns>
@@ -105,7 +113,10 @@ public:
 
 	/// <summary>Checks if the parser is currently in a valid state.</summary>
 	/// <returns>True if the parser is valid, false otherwise.</returns>
-	inline bool isValid(void);
+	inline bool isValid(void)
+	{
+		return values != nullptr;
+	} // end method isValid
 
 	/// <summary>Accessor for the number of groups in the parser.</summary>
 	/// <returns>The number of groups in the parser.</returns>
