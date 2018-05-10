@@ -1,88 +1,286 @@
-#include "IniParser.h"
+#include "IniParser.hpp"
 
 using namespace std;
 
-IniParser::IniParser(const string & s_fileName)
+IniParser::IniParser(const string& s_fileName)
 {
-	values = new map<string, map<string,string>*>();
+	instantiate();
 	parseFile(s_fileName);
 } // end Constructor
 
 
 IniParser::~IniParser(void)
 {
-	values->clear();
-	delete values;
+	clear();
 } // end Destructor
 
 
-string IniParser::operator()(const string& s_group, const string& s_key)
+void IniParser::parse(const std::string & s_fileName)
 {
-	return (*(*values)[s_group])[s_key];
-} // end operator()
+	instantiate();
+
+	parseFile(s_fileName);
+} // end method parse
+
+
+inline void IniParser::clear(void)
+{
+	if (isValid())
+	{
+		values->clear(); // destroy inner maps
+		delete values;
+	} // end if
+} // end method clear
+
+
+inline bool IniParser::empty(void)
+{
+	if (isValid())
+	{
+		return values->empty();
+	} // end if
+
+	return true;
+} // end method empty
+
+
+inline bool IniParser::isValid(void)
+{
+	return values != nullptr;
+} // end method isValid
+
+
+inline size_t IniParser::size(void)
+{
+	if (isValid())
+	{
+		return values->size();
+	} // end if
+
+	return 0;
+} // end method size
+
+
+inline size_t IniParser::groupSize(const std::string & s_group)
+{
+	if (isValid())
+	{
+		if (contains(s_group))
+		{
+			return (*values)[s_group]->size();
+		} // end if
+	} // end if
+
+	return 0;
+} // end method groupSize
+
+
+inline bool IniParser::contains(const std::string & s_group)
+{
+	if (isValid())
+	{
+		return values->count(s_group) != 0;
+	} // end if
+
+	return false;
+} // end method contains
+
+
+inline bool IniParser::contains(const std::string & s_group, const std::string & s_key)
+{
+	if (isValid())
+	{
+		return (*values)[s_group]->count(s_key) != 0;
+	} // end if
+
+	return false;
+} // end method contains
 
 
 void IniParser::parseFile(const string& s_file)
 {
 	ifstream file(s_file.c_str());
 
-	string s_line = "";
-	string s_key  = "";
+	string	s_line = "",
+			s_groupName  = "",
+			s_newGroup = "" ;
 
-	list<string> ls_left;  // items to the left of =
-	list<string> ls_right; // items to the right of =
+	list<KeyPair> keyPairs;
 
-	bool b_first = true;
+	bool b_isKeyPair = false,
+		 b_isGroup = false;
+
+	KeyPair currentPair;
+
 
 	if (file.is_open() && !file.bad())
 	{
 		while (getline(file, s_line))
 		{
-			if (s_line.length() > 0 && s_line.at(0) == '[')
+			if (!s_line.empty())
 			{
-				if (!b_first) // prevent adding first key before parsing the whole group
+				b_isGroup = extractGroupName(s_line, s_newGroup);
+				
+				if (b_isGroup && !keyPairs.empty())
 				{
-					(*values)[s_key] = new map<string, string>(); // make a new map for this group
-
-					list<string>::const_iterator rightItem = ls_right.begin();
-
-					// add all values from this group to map
-					for (list<string>::const_iterator leftItem = ls_left.begin(), end = ls_left.end(); leftItem != end; leftItem++, rightItem++)
-					{
-						(*values)[s_key]->insert((*values)[s_key]->begin(), pair<string, string>(*leftItem, *rightItem));
-					} // end for
-				} // end if
-				else
-				{
-					b_first = false; // first group added when we find the next one or finish
+					addKey(s_groupName, keyPairs);
+					keyPairs.clear();
 				} // end else
 
-				s_key = s_line.substr(1, s_line.length() - 2);
-			} // end if
-			else if (s_line.length() > 0 &&  s_line != "") // member of a group
-			{
-				int i = 0;
-
-				while (s_line.at(i) != '=') // find index of = sign
+				if (!b_isGroup)
 				{
-					i++;
-				} // end while
+					b_isKeyPair = extractKeyPair(s_line, currentPair);
 
-				i++; // above puts i right before the = sign
-
-				ls_left.push_back(s_line.substr(0, i-1)); // everything left of = sign
-				ls_right.push_back(s_line.substr(i, s_line.length() - i)); // everything right of = sign
-			} // end elif
+					if (b_isKeyPair)
+					{
+						keyPairs.push_front(currentPair);
+					} // end if (b_keyPair)
+				} // end if (!b_group)
+				else
+				{
+					s_groupName = s_newGroup;
+				} // end else				
+			} // end if
 		} // end while
+
+		if (!keyPairs.empty()) // add last key if it has anything in it
+		{
+			addKey(s_groupName, keyPairs);
+			keyPairs.clear();
+		} // end if
 	} // end if 
 
-	// last group was not added to values yet
-	(*values)[s_key] = new map<string, string>();
-
-	list<string>::const_iterator rightItem = ls_right.begin();
-
-	for (list<string>::const_iterator leftItem = ls_left.begin(), end = ls_left.end(); leftItem != end; leftItem++, rightItem++)
-	{
-		(*values)[s_key]->insert((*values)[s_key]->begin(), pair<string, string>(*leftItem, *rightItem));
-	} // end for
+	file.close();
 } // end method parseFile
+
+
+inline void IniParser::instantiate(void)
+{
+	if (!isValid())
+	{
+		values = new map<string, map<string, string>*>();
+
+		if (values == nullptr)
+		{
+			throw runtime_error("IniParser could not instantiate memory.");
+		} // end else
+	} // end if
+} // end method instantiate
+
+
+void IniParser::addKey(const std::string s_group, std::list<KeyPair>& pairs)
+{
+	addGroup(s_group);
+
+	// add all values from this group to map
+	for (auto& keyPair : pairs)
+	{
+		addKey(s_group, keyPair);
+	} // end for	
+
+} // end method addKey
+
+
+void IniParser::addKey(const std::string s_group, KeyPair& keyPair)
+{
+	instantiate();
+
+	(*values)[s_group]->insert((*values)[s_group]->begin(), pair<string, string>(keyPair.key, keyPair.value));
+} // end method addKey
+
+
+void IniParser::addGroup(const std::string s_group)
+{
+	instantiate();
+
+	if (!contains(s_group))
+	{
+		(*values)[s_group] = new map<string, string>(); // make a new map for this group
+	} // end if
+} // end method addGroup
+
+
+bool IniParser::extractGroupName(const std::string& s_line, std::string& s_group)
+{
+	size_t	ui_start = s_line.find("["),   // start of group name
+			ui_end = s_line.find("]"),	   // end of group name
+			ui_comment = s_line.find(";"); // check if the line has a comment on it
+
+	bool b_out = false;
+
+	if (ui_comment != 0) // check if the whole line is a comment
+	{
+		if ((ui_start != std::string::npos)) // check if '[' is in the string
+		{
+			if (ui_end == std::string::npos) // check if ']' is in the string
+			{
+				stringstream ss;
+				
+				ss << "The group name '" << s_line << "' is invalid. No closing bracket ']' found!";
+
+				throw invalid_argument(ss.str());
+			} // end if
+			else
+			{
+				s_group = s_line.substr(ui_start + 1, ui_end - 1);
+				b_out = true;
+			} // end else
+		} // end if
+	} // end if
+
+	return b_out;
+} // end method extractGroupName                                                                      
+
+
+bool IniParser::extractKeyPair(const std::string& s_line, KeyPair& keyPair)
+{
+	bool b_out = false;
+
+	size_t	ui_equalSign = s_line.find("="),	// start of group name
+			ui_comment = s_line.find(";");		// comment index
+			
+
+	if (ui_comment != 0 && ui_equalSign != std::string::npos) // check if the whole line is a comment and ensure there is an equal sign
+	{
+		size_t	ui_startKey = 0,
+				ui_endKey = ui_equalSign - 1,
+				ui_startValue = ui_equalSign + 1,
+				ui_endValue = ui_startValue;
+
+		// find the first character in the string
+		while (ui_startKey < s_line.length() && !isalpha(s_line.at(ui_startKey)))
+		{
+			ui_startKey++;
+		} // end while
+
+		// find the first character of the value
+		while (ui_startValue < s_line.length() && !isalnum(s_line.at(ui_startValue)))
+		{
+			ui_startValue++;
+		} // end while
+
+		while (ui_endKey > 0 && !isalnum(s_line.at(ui_endKey)))
+		{
+			ui_endKey--;
+		} // end while
+
+		ui_endValue = ui_startValue;
+
+		// find the end of the value component
+		while (ui_endValue < s_line.length() && isalnum(s_line.at(ui_endValue)))
+		{
+			ui_endValue++;
+		} // end while
+
+		// ensure indices are valid
+		if (ui_startKey < ui_endKey && ui_startValue < ui_endValue && ui_endKey < ui_endValue)
+		{
+			keyPair.key = s_line.substr(ui_startKey, (ui_endKey - ui_startKey) + 1);
+			keyPair.value = s_line.substr(ui_startValue, (ui_endValue - ui_startValue));
+
+			b_out = true;
+		} // end if (ui_startKey < ui_endKey && ui_startValue < ui_endValue)
+	} // end if (ui_comment != 0 && ui_equalSign != std::string::npos)
+
+	return b_out;
+} // end method extractKeyPair																							                 
