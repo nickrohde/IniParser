@@ -4,8 +4,7 @@ using namespace std;
 
 IniParser::IniParser(const string& s_fileName)
 {
-	instantiate();
-	parseFile(s_fileName);
+	parse(s_fileName);
 } // end Constructor
 
 
@@ -18,7 +17,6 @@ IniParser::~IniParser(void)
 void IniParser::parse(const std::string & s_fileName)
 {
 	instantiate();
-
 	parseFile(s_fileName);
 } // end method parse
 
